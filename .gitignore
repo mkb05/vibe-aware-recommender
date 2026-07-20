@@ -1,0 +1,19 @@
+# Environments and Secrets
+.env
+__pycache__/
+*.pyc
+
+# Python / Backend
+backend_api/venv/
+backend_api/.pytest_cache/
+
+# Node / Frontend
+frontend_ui/node_modules/
+frontend_ui/.next/
+
+# Machine Learning Models and Heavy Data
+model_training/data/
+*.pth
+*.gguf
+*.bin
+*.npy
