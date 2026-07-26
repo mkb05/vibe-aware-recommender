@@ -49,7 +49,7 @@ export default function Home() {
     setIsSearchingVibe(true);
     setVibeResults(null);
     try {
-      const res = await fetch(`${API_BASE_URL}//vibe_search`, {
+      const res = await fetch(`${API_BASE_URL}/vibe_search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ movie_id: 0, vibe_prompt: homeVibe }),
@@ -88,7 +88,7 @@ export default function Home() {
 
   const fetchRecommendations = async (movieId: any, currentVibe: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}//recommend`, {
+      const response = await fetch(`${API_BASE_URL}/recommend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ movie_id: movieId, vibe_prompt: currentVibe }),
