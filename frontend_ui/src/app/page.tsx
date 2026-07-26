@@ -143,34 +143,34 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
         {!activeMovie ? (
           <div className="space-y-12">
             {/* HERO VIBE SEARCH */}
-            <div className="bg-slate-900 rounded-2xl p-8 md:p-12 text-center shadow-xl">
+            <div className="bg-slate-900 rounded-2xl p-6 md:p-12 text-center shadow-xl">
               <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
                 What's your vibe today?
               </h2>
-              <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
+              <p className="text-slate-400 mb-8 max-w-2xl mx-auto text-sm md:text-base">
                 Describe the exact mood, setting, or feeling you want, and our
                 AI curator will build a custom lineup just for you.
               </p>
 
               <form
                 onSubmit={handleHomeVibeSearch}
-                className="max-w-3xl mx-auto flex gap-3"
+                className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-3"
               >
                 <input
                   type="text"
                   placeholder="e.g., A rainy night mystery with a massive plot twist..."
                   value={homeVibe}
                   onChange={(e) => setHomeVibe(e.target.value)}
-                  className="flex-1 rounded-xl p-4 text-lg focus:outline-none focus:ring-4 focus:ring-emerald-500/50 shadow-inner bg-white text-gray-900 placeholder-gray-400"
+                  className="flex-1 rounded-xl p-4 text-base md:text-lg focus:outline-none focus:ring-4 focus:ring-emerald-500/50 shadow-inner bg-white text-gray-900 placeholder-gray-400"
                 />
                 <button
                   type="submit"
                   disabled={isSearchingVibe || !homeVibe.trim()}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 rounded-xl font-bold text-lg transition-all disabled:opacity-70 flex items-center justify-center min-w-[140px]"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white py-3 sm:py-0 px-8 rounded-xl font-bold text-lg transition-all disabled:opacity-70 flex items-center justify-center min-w-[140px]"
                 >
                   {isSearchingVibe ? (
                     <Loader2 className="w-6 h-6 animate-spin" />
@@ -184,10 +184,10 @@ export default function Home() {
             {/* DYNAMIC VIBE RESULTS */}
             {vibeResults && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h3 className="text-2xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
+                <h3 className="text-xl md:text-2xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
                   Custom Curated for: "{homeVibe}"
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                   {vibeResults.map((movie, idx) => (
                     <MovieCard
                       key={idx}
@@ -212,10 +212,10 @@ export default function Home() {
               ) : (
                 categories.map((category, idx) => (
                   <div key={idx} className="space-y-4">
-                    <h3 className="text-xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
+                    <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
                       {category.title}
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                       {category.movies.map((movie: any) => (
                         <MovieCard
                           key={movie.id}
@@ -230,9 +230,9 @@ export default function Home() {
               ))}
           </div>
         ) : (
-          /* WATCH VIEW (Omitted for brevity - exact same player/sidebar logic as before) */
+          /* WATCH VIEW */
           <div className="flex flex-col lg:flex-row gap-8">
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-4 md:space-y-6">
               <button
                 onClick={() => setActiveMovie(null)}
                 className="flex items-center gap-2 text-gray-500 hover:text-emerald-600 font-semibold transition-colors"
@@ -251,7 +251,9 @@ export default function Home() {
                   <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
                 )}
               </div>
-              <h2 className="text-2xl font-bold">{activeMovie.title}</h2>
+              <h2 className="text-2xl md:text-3xl font-bold">
+                {activeMovie.title}
+              </h2>
             </div>
 
             {/* SIDEBAR RECS */}
@@ -294,10 +296,10 @@ export default function Home() {
           onClick={() => setModalMovie(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative h-48 md:h-64 bg-slate-900">
+            <div className="relative h-48 md:h-64 bg-slate-900 shrink-0">
               {modalMovie.poster && (
                 <img
                   src={modalMovie.poster}
@@ -311,22 +313,22 @@ export default function Home() {
               >
                 <X className="w-5 h-5" />
               </button>
-              <div className="absolute bottom-0 left-0 p-6 bg-gradient-to-t from-black/90 to-transparent w-full">
-                <h2 className="text-3xl font-bold text-white drop-shadow-md">
+              <div className="absolute bottom-0 left-0 p-4 md:p-6 bg-gradient-to-t from-black/90 to-transparent w-full">
+                <h2 className="text-2xl md:text-3xl font-bold text-white drop-shadow-md">
                   {modalMovie.title}
                 </h2>
               </div>
             </div>
 
-            <div className="p-6 md:p-8 min-h-[250px]">
+            <div className="p-4 md:p-8 min-h-[250px]">
               {loadingDetails ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3 py-10">
                   <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />{" "}
                   Fetching studio data...
                 </div>
               ) : movieDetails ? (
                 <div className="space-y-6">
-                  <div className="flex flex-wrap gap-3 items-center text-sm font-medium text-slate-600 border-b pb-4">
+                  <div className="flex flex-wrap gap-2 md:gap-3 items-center text-xs md:text-sm font-medium text-slate-600 border-b pb-4">
                     <span className="bg-slate-100 px-3 py-1 rounded-full">
                       {movieDetails.Year}
                     </span>
@@ -341,7 +343,7 @@ export default function Home() {
                       {movieDetails.imdbRating}
                     </span>
                   </div>
-                  <p className="text-gray-700 text-lg leading-relaxed">
+                  <p className="text-gray-700 text-sm md:text-lg leading-relaxed">
                     {movieDetails.Plot}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -389,7 +391,7 @@ function MovieCard({
   return (
     <div
       onClick={() => onSelect(movie)}
-      className="group relative h-72 bg-slate-900 rounded-xl overflow-hidden cursor-pointer hover:ring-4 hover:ring-emerald-500 transition-all shadow-md flex items-end p-4"
+      className="group relative h-56 sm:h-72 bg-slate-900 rounded-xl overflow-hidden cursor-pointer hover:ring-4 hover:ring-emerald-500 transition-all shadow-md flex items-end p-3 sm:p-4"
     >
       {movie.poster && (
         <img
@@ -401,17 +403,18 @@ function MovieCard({
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent group-hover:from-black/90 transition-colors" />
 
       <div className="relative z-10 w-full">
-        <h4 className="text-white font-bold text-lg leading-tight mb-3 drop-shadow-md">
+        <h4 className="text-white font-bold text-sm sm:text-lg leading-tight mb-2 sm:mb-3 drop-shadow-md line-clamp-2">
           {movie.title}
         </h4>
 
         <div className="flex gap-2 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-          <button className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-lg">
-            <PlayCircle className="w-4 h-4" /> Play
+          <button className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold py-1.5 sm:py-2 rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 shadow-lg">
+            <PlayCircle className="w-4 h-4" />{" "}
+            <span className="hidden sm:inline">Play</span>
           </button>
           <button
             onClick={(e) => onInfo(movie, e)}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center justify-center shadow-lg"
+            className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-xs font-bold px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg flex items-center justify-center shadow-lg"
           >
             <Info className="w-4 h-4" />
           </button>
