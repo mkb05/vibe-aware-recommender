@@ -12,6 +12,7 @@ import {
   Star,
 } from "lucide-react";
 import { API_BASE_URL } from "../../config/api";
+import Loader from "./Loader";
 
 export default function Home() {
   // Discovery State
@@ -62,6 +63,10 @@ export default function Home() {
       setIsSearchingVibe(false);
     }
   };
+
+  if (loadingCatalog) {
+    return <Loader message="Waking up the recommendation engine..." />;
+  }
 
   // 2. Play Trailer & Fetch Recs
   const handleMovieSelect = async (movie: any) => {
