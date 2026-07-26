@@ -17,10 +17,10 @@ app = FastAPI(title="Vibe-Aware Recommender API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # Allows your Next.js app to connect
+    allow_origins=["*"],  # Allows all origins (or replace with your specific Vercel URL)
     allow_credentials=True,
-    allow_methods=["*"], # Allows all methods like POST, GET, etc.
-    allow_headers=["*"], # Allows all headers
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
 
