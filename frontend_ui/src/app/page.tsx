@@ -400,14 +400,16 @@ function MovieCard({
           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent group-hover:from-black/90 transition-colors" />
+      {/* Dark gradient is slightly stronger on mobile so buttons are always legible */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent sm:group-hover:from-black/90 transition-colors" />
 
       <div className="relative z-10 w-full">
         <h4 className="text-white font-bold text-sm sm:text-lg leading-tight mb-2 sm:mb-3 drop-shadow-md line-clamp-2">
           {movie.title}
         </h4>
 
-        <div className="flex gap-2 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+        {/* Always visible on mobile (opacity-100), hidden until hover on desktop (sm:opacity-0) */}
+        <div className="flex gap-2 opacity-100 translate-y-0 sm:opacity-0 sm:translate-y-4 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 transition-all duration-300">
           <button className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold py-1.5 sm:py-2 rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 shadow-lg">
             <PlayCircle className="w-4 h-4" />{" "}
             <span className="hidden sm:inline">Play</span>
