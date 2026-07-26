@@ -124,7 +124,7 @@ def get_movie_catalog():
                         if response.status_code == 200:
                             data = response.json()
                             if data.get("Response") == "True" and data.get("Poster") and data.get("Poster") != "N/A":
-                                movie["poster"] = data["Poster"]
+                                movie["poster"] = fetch_poster_from_omdb(clean_title, omdb_api_key)
                     except Exception as e:
                         print(f"Failed to fetch poster for {clean_title}: {e}")
 
@@ -137,6 +137,46 @@ def get_movie_catalog():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Catalog fetch failed: {str(e)}")
+
+
+
+import time
+
+# Optional: Simple in-memory cache to avoid query OMDb twice for the same movie
+omdb_cache = {}
+
+def fetch_poster_from_omdb(clean_title: str, api_key: str) -> str:
+    if clean_title in omdb_cache:
+        return omdb_cache[clean_title]
+        
+    fallback = f"https://ui-avatars.com/api/?name={clean_title.replace(' ', '+')}&background=random&size=512"
+    
+    if not api_key:
+        return fallback
+
+    url = "http://www.omdbapi.com/"
+    for attempt in range(2): # Try twice if it times out
+        try:
+            params = {"apikey": api_key, "t": clean_title}
+            response = requests.get(url, params=params, timeout=10) # Increased timeout to 10s
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("Response") == "True" and data.get("Poster") and data.get("Poster") != "N/A":
+                    poster_url = data["Poster"]
+                    omdb_cache[clean_title] = poster_url
+                    return poster_url
+        except requests.exceptions.Timeout:
+            print(f"⚠️ OMDb timeout on attempt {attempt+1} for '{clean_title}', retrying...")
+            time.sleep(1)
+        except Exception as e:
+            print(f"❌ OMDb error for '{clean_title}': {e}")
+            break
+            
+    return fallback
+
+
+
 
 @app.post("/recommend")
 def get_vibe_recommendation(request: VibeRequest):
@@ -298,6 +338,107 @@ def get_movie_trailer(title: str):
     print(f"⚠️ [TRAILER FALLBACK] Used default fallback for '{clean_title}'")
     return {"status": "success", "video_id": "YoHD9XEInc0"}
 
+
+
+@app.post("/vibe_search")
+def vibe_search(request: VibeRequest):
+    try:
+        # 1. Grab a pool of modern movies from Qdrant
+        scroll_result = qdrant.scroll(
+            collection_name="movies", limit=100, with_payload=True, with_vectors=False
+        )
+        pool = [{"title": p.payload.get("title", ""), "genres": p.payload.get("genres", [])} for p in scroll_result[0]]
+        
+        # Filter for modern movies to save LLM tokens
+        modern_pool = [m for m in pool if re.search(r'\((20[0-2][0-9])\)', m["title"])][:40]
+
+        # 2. Ask Groq to curate a custom lineup based on the home screen vibe
+        prompt = f"""
+        The user is looking for this specific vibe: "{request.vibe_prompt}".
+        Here is a pool of available movies: {modern_pool}
+        Select the 8 best matching movies. Output valid JSON containing a 'recommendations' array. Each item needs a 'title' and a 'reason'.
+        """
+        
+        chat_completion = groq_client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.1-8b-instant",
+            temperature=0.6,
+            response_format={"type": "json_object"}
+        )
+        
+        results = json.loads(chat_completion.choices[0].message.content).get("recommendations", [])
+        
+        # 3. Fetch OMDb Posters for the curated list
+        omdb_api_key = os.getenv("OMDB_API_KEY")
+        for rec in results:
+            clean_title = rec.get("title", "").split('(')[0].strip()
+            rec["poster"] = f"https://ui-avatars.com/api/?name={clean_title.replace(' ', '+')}&background=random"
+            
+            if omdb_api_key:
+                try:
+                    res = requests.get("http://www.omdbapi.com/", params={"apikey": omdb_api_key, "t": clean_title}, timeout=3)
+                    if res.status_code == 200 and res.json().get("Response") == "True":
+                        rec["poster"] = res.json().get("Poster", rec["poster"])
+                except: pass
+
+        return {"status": "success", "data": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/details")
+def get_movie_details(title: str):
+    omdb_api_key = os.getenv("OMDB_API_KEY")
+    if not omdb_api_key:
+        raise HTTPException(status_code=500, detail="OMDb API key missing")
+        
+    clean_title = title.split('(')[0].strip()
+    try:
+        response = requests.get(
+            "http://www.omdbapi.com/", 
+            params={"apikey": omdb_api_key, "t": clean_title, "plot": "short"}, 
+            timeout=5
+        )
+        if response.status_code == 200:
+            return {"status": "success", "data": response.json()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+omdb_cache = {}
+
+def fetch_poster_from_omdb(clean_title: str, api_key: str) -> str:
+    if clean_title in omdb_cache:
+        return omdb_cache[clean_title]
+        
+    fallback = f"https://ui-avatars.com/api/?name={clean_title.replace(' ', '+')}&background=random&size=512"
+    
+    if not api_key:
+        return fallback
+
+    url = "http://www.omdbapi.com/"
+    for attempt in range(2): # Try twice if it times out
+        try:
+            params = {"apikey": api_key, "t": clean_title}
+            response = requests.get(url, params=params, timeout=10) # Increased timeout to 10s
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("Response") == "True" and data.get("Poster") and data.get("Poster") != "N/A":
+                    poster_url = data["Poster"]
+                    omdb_cache[clean_title] = poster_url
+                    return poster_url
+        except requests.exceptions.Timeout:
+            print(f"⚠️ OMDb timeout on attempt {attempt+1} for '{clean_title}', retrying...")
+            time.sleep(1)
+        except Exception as e:
+            print(f"❌ OMDb error for '{clean_title}': {e}")
+            break
+            
+    return fallback
+
+    
 
 @app.get("/")
 def read_root():
