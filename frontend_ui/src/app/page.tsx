@@ -11,6 +11,7 @@ import {
   X,
   Star,
 } from "lucide-react";
+import { API_BASE_URL } from "../../config/api";
 
 export default function Home() {
   // Discovery State
@@ -34,7 +35,7 @@ export default function Home() {
 
   // Load default catalog on mount
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/catalog")
+    fetch(`${API_BASE_URL}/catalog`)
       .then((res) => res.json())
       .then((data) => setCategories(data.categories || []))
       .finally(() => setLoadingCatalog(false));
@@ -48,7 +49,7 @@ export default function Home() {
     setIsSearchingVibe(true);
     setVibeResults(null);
     try {
-      const res = await fetch("http://127.0.0.1:8000/vibe_search", {
+      const res = await fetch(`${API_BASE_URL}//vibe_search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ movie_id: 0, vibe_prompt: homeVibe }),
@@ -71,7 +72,7 @@ export default function Home() {
 
     try {
       const trailerRes = await fetch(
-        `http://127.0.0.1:8000/trailer?title=${encodeURIComponent(movie.title)}`,
+        `${API_BASE_URL}/trailer?title=${encodeURIComponent(movie.title)}`,
       );
       const trailerData = await trailerRes.json();
       setTrailerId(trailerData.video_id || "zSWdZVtXT7E");
@@ -87,7 +88,7 @@ export default function Home() {
 
   const fetchRecommendations = async (movieId: any, currentVibe: string) => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/recommend", {
+      const response = await fetch(`${API_BASE_URL}//recommend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ movie_id: movieId, vibe_prompt: currentVibe }),
@@ -108,7 +109,7 @@ export default function Home() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/details?title=${encodeURIComponent(movie.title)}`,
+        `${API_BASE_URL}/details?title=${encodeURIComponent(movie.title)}`,
       );
       const data = await res.json();
       if (data.data?.Response === "True") {
