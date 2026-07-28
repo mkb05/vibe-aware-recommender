@@ -256,14 +256,18 @@ export default function Home() {
                 <h3 className="text-xl md:text-2xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
                   Custom Curated for: "{homeVibe}"
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="flex gap-4 overflow-x-auto pb-4 snap-x no-scrollbar">
                   {vibeResults.map((movie, idx) => (
-                    <MovieCard
+                    <div
                       key={idx}
-                      movie={movie}
-                      onSelect={handleMovieSelect}
-                      onInfo={openDetailsModal}
-                    />
+                      className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] flex-shrink-0 snap-start"
+                    >
+                      <MovieCard
+                        movie={movie}
+                        onSelect={handleMovieSelect}
+                        onInfo={openDetailsModal}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -347,14 +351,18 @@ export default function Home() {
                     <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
                       {category.title}
                     </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x no-scrollbar">
                       {category.movies.map((movie: any) => (
-                        <MovieCard
+                        <div
                           key={movie.id}
-                          movie={movie}
-                          onSelect={handleMovieSelect}
-                          onInfo={openDetailsModal}
-                        />
+                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] flex-shrink-0 snap-start"
+                        >
+                          <MovieCard
+                            movie={movie}
+                            onSelect={handleMovieSelect}
+                            onInfo={openDetailsModal}
+                          />
+                        </div>
                       ))}
                     </div>
                   </div>
