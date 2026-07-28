@@ -8,6 +8,8 @@ import requests
 from qdrant_client import QdrantClient
 from groq import Groq
 from youtubesearchpython import VideosSearch
+import numpy as np
+from qdrant_client.models import PointStruct
 
 # Load environment variables
 load_dotenv(dotenv_path="../.env")
@@ -36,6 +38,9 @@ try:
     )
 except Exception as e:
     print(f"Failed to connect to Qdrant: {e}")
+
+
+
 
 
 class VibeRequest(BaseModel):
@@ -438,7 +443,189 @@ def fetch_poster_from_omdb(clean_title: str, api_key: str) -> str:
             
     return fallback
 
+
+# Dynamic runtime user history store (Starts empty for all users)
+runtime_user_history = {}
+
+class WatchRequest(BaseModel):
+    user_id: int
+    movie_id: int
+
+
+
+@app.post("/user/watch")
+def log_user_watch(request: WatchRequest):
+    """Logs a watch event, creating the user in Qdrant automatically if they are brand new."""
+    try:
+        user_points = qdrant.retrieve(
+            collection_name="users", 
+            ids=[request.user_id], 
+            with_payload=True,
+            with_vectors=True
+        )
+        
+        current_history = []
+        user_vector = None
+        
+        if user_points:
+            current_history = user_points[0].payload.get("history_movie_ids", [])
+            user_vector = user_points[0].vector
+            
+        # Update history (avoid duplicates, newest at the front)
+        if request.movie_id in current_history:
+            current_history.remove(request.movie_id)
+        current_history.insert(0, request.movie_id)
+        current_history = current_history[:20] # Keep latest 20
+        
+        # If brand new user, assign a default zero vector (or anchor it to the watched movie if you prefer)
+        if user_vector is None:
+            user_vector = [0.0] * 128 
+            
+        # Save/Upsert back to Qdrant Cloud
+        qdrant.upsert(
+            collection_name="users",
+            points=[
+                PointStruct(
+                    id=request.user_id,
+                    vector=user_vector,
+                    payload={
+                        "user_id": request.user_id,
+                        "history_movie_ids": current_history
+                    }
+                )
+            ]
+        )
+        
+        return {"status": "success", "message": "History updated", "history": current_history}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/user/{user_id}/history")
+def get_based_on_history(user_id: int):
+    """Fetches user watch history directly from Qdrant Cloud payload."""
+    try:
+        # Fetch user point from Qdrant
+        user_points = qdrant.retrieve(
+            collection_name="users", 
+            ids=[user_id], 
+            with_payload=True
+        )
+        
+        if not user_points:
+            return {"status": "success", "data": []}
+            
+        interacted_movie_ids = user_points[0].payload.get("history_movie_ids", [])[:6]
+        
+        if not interacted_movie_ids:
+            return {"status": "success", "data": []}
+            
+        # Retrieve full movie details from Qdrant movies collection
+        movie_points = qdrant.retrieve(collection_name="movies", ids=interacted_movie_ids)
+        results = [{"id": p.id, **p.payload} for p in movie_points]
+        
+        omdb_api_key = os.getenv("OMDB_API_KEY")
+        for movie in results:
+            clean_title = movie["title"].split('(')[0].strip()
+            movie["poster"] = fetch_poster_from_omdb(clean_title, omdb_api_key)
+            
+        return {"status": "success", "data": results}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch history from cloud: {str(e)}")
+
+@app.get("/recommendations/for-you/{user_id}")
+def get_recommended_for_you(user_id: int):
+    """Returns tailored recommendations. If the user is new with no history, returns popular/fallback movies."""
+    try:
+        user_points = qdrant.retrieve(
+            collection_name="users", 
+            ids=[user_id], 
+            with_vectors=True,
+            with_payload=True
+        )
+        
+        # If brand new user has no profile in Qdrant yet, return top catalog items as fallback
+        if not user_points or not user_points[0].vector or all(v == 0.0 for v in user_points[0].vector):
+            scroll_result = qdrant.scroll(collection_name="movies", limit=6, with_payload=True)
+            fallback_results = [{"id": p.id, **p.payload} for p in scroll_result[0]]
+            
+            omdb_api_key = os.getenv("OMDB_API_KEY")
+            for movie in fallback_results:
+                clean_title = movie["title"].split('(')[0].strip()
+                movie["poster"] = fetch_poster_from_omdb(clean_title, omdb_api_key)
+            return {"status": "success", "data": fallback_results}
+            
+        # Otherwise, run vector search based on their profile vector
+        user_vector = user_points[0].vector
+        history_movie_ids = user_points[0].payload.get("history_movie_ids", [])
+        
+        search_result = qdrant.search(
+            collection_name="movies",
+            query_vector=user_vector,
+            limit=12
+        )
+        
+        results = [{"id": hit.id, **hit.payload} for hit in search_result]
+        
+        # Filter out already watched movies for fresh results
+        fresh_recommendations = [m for m in results if m["id"] not in history_movie_ids][:6]
+        if not fresh_recommendations:
+            fresh_recommendations = results[:6]
+            
+        omdb_api_key = os.getenv("OMDB_API_KEY")
+        for movie in fresh_recommendations:
+            clean_title = movie["title"].split('(')[0].strip()
+            movie["poster"] = fetch_poster_from_omdb(clean_title, omdb_api_key)
+            
+        return {"status": "success", "data": fresh_recommendations}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/recommendations/similar-users/{user_id}")
+def get_similar_users_watching(user_id: int):
+    # 1. Retrieve the target user's vector from the 'users' collection
+    user_points = qdrant.retrieve(collection_name="users", ids=[user_id], with_vectors=True)
+    if not user_points or not user_points[0].vector:
+        return {"status": "error", "message": "User not found"}
+        
+    target_user_vector = user_points[0].vector
     
+    # 2. Find similar users by querying the 'users' collection using vector search
+    similar_users = qdrant.search(
+        collection_name="users",
+        query_vector=target_user_vector,
+        limit=6  # Top 6 similar users (the closest one will be the user themselves)
+    )
+    
+    # 3. Gather movie history IDs from those similar users (skipping the user themselves)
+    peer_movie_ids = []
+    for hit in similar_users:
+        if hit.id == user_id:
+            continue
+        history = hit.payload.get("history_movie_ids", [])
+        peer_movie_ids.extend(history)
+        
+    # Deduplicate movie IDs while keeping order
+    unique_movie_ids = list(dict.fromkeys(peer_movie_ids))[:6]
+    
+    if not unique_movie_ids:
+        return {"status": "success", "data": []}
+
+    # 4. Fetch the final movie details from the 'movies' collection
+    movie_points = qdrant.retrieve(collection_name="movies", ids=unique_movie_ids)
+    results = [{"id": p.id, **p.payload} for p in movie_points]
+    
+    # Attach OMDb posters
+    omdb_api_key = os.getenv("OMDB_API_KEY")
+    for movie in results:
+        clean_title = movie["title"].split('(')[0].strip()
+        movie["poster"] = fetch_poster_from_omdb(clean_title, omdb_api_key)
+        
+    return {"status": "success", "data": results}
+
 
 @app.get("/")
 def read_root():

@@ -15,9 +15,18 @@ import { API_BASE_URL } from "../../config/api";
 import Loader from "./Loader";
 
 export default function Home() {
-  // Discovery State
+  // Simulate a logged-in user (User ID 1 from MovieLens)
+  const currentUserId = 1;
+
+  // Discovery State (Default Catalog)
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+
+  // NEW: Personalized Recommendations State
+  const [historyMovies, setHistoryMovies] = useState<any[]>([]);
+  const [forYouMovies, setForYouMovies] = useState<any[]>([]);
+  const [peerMovies, setPeerMovies] = useState<any[]>([]);
+  const [loadingPersonalized, setLoadingPersonalized] = useState(true);
 
   // Vibe Search State
   const [homeVibe, setHomeVibe] = useState("");
@@ -34,13 +43,46 @@ export default function Home() {
   const [movieDetails, setMovieDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Load default catalog on mount
+  // Load default catalog AND personalized recommendations on mount
   useEffect(() => {
+    // 1. Fetch Default Catalog
     fetch(`${API_BASE_URL}/catalog`)
       .then((res) => res.json())
       .then((data) => setCategories(data.categories || []))
       .finally(() => setLoadingCatalog(false));
-  }, []);
+
+    // 2. Fetch Personalized Data for the logged-in user
+    const fetchPersonalizedData = async () => {
+      try {
+        const [historyRes, forYouRes, peerRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/user/${currentUserId}/history`),
+          fetch(`${API_BASE_URL}/recommendations/for-you/${currentUserId}`),
+          fetch(
+            `${API_BASE_URL}/recommendations/similar-users/${currentUserId}`,
+          ),
+        ]);
+
+        const historyData = await historyRes.json();
+        const forYouData = await forYouRes.json();
+        const peerData = await peerRes.json();
+
+        // Depending on FastAPI, data might be direct array or wrapped in { data: [...] }
+        setHistoryMovies(
+          Array.isArray(historyData) ? historyData : historyData.data || [],
+        );
+        setForYouMovies(
+          Array.isArray(forYouData) ? forYouData : forYouData.data || [],
+        );
+        setPeerMovies(Array.isArray(peerData) ? peerData : peerData.data || []);
+      } catch (error) {
+        console.error("Failed to load personalized recommendations", error);
+      } finally {
+        setLoadingPersonalized(false);
+      }
+    };
+
+    fetchPersonalizedData();
+  }, [currentUserId]);
 
   // 1. Homepage Vibe Search
   const handleHomeVibeSearch = async (e: FormEvent) => {
@@ -64,7 +106,7 @@ export default function Home() {
     }
   };
 
-  if (loadingCatalog) {
+  if (loadingCatalog && loadingPersonalized) {
     return <Loader message="Waking up the recommendation engine..." />;
   }
 
@@ -74,6 +116,33 @@ export default function Home() {
     setTrailerId(null);
     setRecommendations(null);
     window.scrollTo(0, 0);
+
+    // 1. Log this movie to the backend history store
+    try {
+      await fetch(`${API_BASE_URL}/user/watch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: currentUserId, movie_id: movie.id }),
+      });
+
+      // 2. Refresh personalized home data immediately after logging
+      const [historyRes, forYouRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/user/${currentUserId}/history`),
+        fetch(`${API_BASE_URL}/recommendations/for-you/${currentUserId}`),
+      ]);
+
+      const historyData = await historyRes.json();
+      const forYouData = await forYouRes.json();
+
+      setHistoryMovies(
+        Array.isArray(historyData) ? historyData : historyData.data || [],
+      );
+      setForYouMovies(
+        Array.isArray(forYouData) ? forYouData : forYouData.data || [],
+      );
+    } catch (err) {
+      console.error("Failed to update user watch history", err);
+    }
 
     try {
       const trailerRes = await fetch(
@@ -200,17 +269,80 @@ export default function Home() {
               </div>
             )}
 
-            {/* DEFAULT CATALOG */}
-            {!vibeResults &&
-              (loadingCatalog ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-                  <span className="ml-2 text-gray-500 font-medium">
-                    Loading live database catalog...
-                  </span>
-                </div>
-              ) : (
-                categories.map((category, idx) => (
+            {/* DEFAULT CATALOG & PERSONALIZED SECTIONS */}
+            {!vibeResults && (
+              <div className="space-y-12">
+                {/* Section 1: Based on your history */}
+                {historyMovies.length > 0 && (
+                  <section>
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
+                      History
+                    </h2>
+                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+                      {historyMovies.map((movie: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] snap-start"
+                        >
+                          <MovieCard
+                            movie={movie}
+                            onSelect={handleMovieSelect}
+                            onInfo={openDetailsModal}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Section 2: Recommended for you */}
+                {forYouMovies.length > 0 && (
+                  <section>
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-l-4 border-blue-500 pl-3">
+                      Recommended For You
+                    </h2>
+                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+                      {forYouMovies.map((movie: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] snap-start"
+                        >
+                          <MovieCard
+                            movie={movie}
+                            onSelect={handleMovieSelect}
+                            onInfo={openDetailsModal}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Section 3: Users with similar interest */}
+                {peerMovies.length > 0 && (
+                  <section>
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-l-4 border-purple-500 pl-3">
+                      Users with Similar Interests Are Watching
+                    </h2>
+                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+                      {peerMovies.map((movie: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] snap-start"
+                        >
+                          <MovieCard
+                            movie={movie}
+                            onSelect={handleMovieSelect}
+                            onInfo={openDetailsModal}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* FALLBACK CATALOG (If no personalization exists yet) */}
+                {categories.map((category, idx) => (
                   <div key={idx} className="space-y-4">
                     <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
                       {category.title}
@@ -226,12 +358,14 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                ))
-              ))}
+                ))}
+              </div>
+            )}
           </div>
         ) : (
-          /* WATCH VIEW */
+          /* WATCH VIEW (Unchanged) */
           <div className="flex flex-col lg:flex-row gap-8">
+            {/* ... Your existing watch view code ... */}
             <div className="flex-1 space-y-4 md:space-y-6">
               <button
                 onClick={() => setActiveMovie(null)}
@@ -289,12 +423,13 @@ export default function Home() {
         )}
       </main>
 
-      {/* OMDb MOVIE DETAILS MODAL */}
+      {/* OMDb MOVIE DETAILS MODAL (Unchanged) */}
       {modalMovie && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setModalMovie(null)}
         >
+          {/* ... Modal code remains identical ... */}
           <div
             className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
@@ -378,7 +513,7 @@ export default function Home() {
   );
 }
 
-// Reusable Movie Card Component
+// Reusable Movie Card Component (Unchanged)
 function MovieCard({
   movie,
   onSelect,
@@ -400,7 +535,6 @@ function MovieCard({
           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
       )}
-      {/* Dark gradient is slightly stronger on mobile so buttons are always legible */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent sm:group-hover:from-black/90 transition-colors" />
 
       <div className="relative z-10 w-full">
@@ -408,7 +542,6 @@ function MovieCard({
           {movie.title}
         </h4>
 
-        {/* Always visible on mobile (opacity-100), hidden until hover on desktop (sm:opacity-0) */}
         <div className="flex gap-2 opacity-100 translate-y-0 sm:opacity-0 sm:translate-y-4 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 transition-all duration-300">
           <button className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold py-1.5 sm:py-2 rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 shadow-lg">
             <PlayCircle className="w-4 h-4" />{" "}
