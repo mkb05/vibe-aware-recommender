@@ -50,6 +50,8 @@ export default function Home() {
   const [activeMovie, setActiveMovie] = useState<any>(null);
   const [trailerId, setTrailerId] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any>(null);
+  const [watchMovieDetails, setWatchMovieDetails] = useState<any>(null);
+  const [loadingWatchDetails, setLoadingWatchDetails] = useState(false);
 
   // Modal State
   const [modalMovie, setModalMovie] = useState<any>(null);
@@ -133,12 +135,29 @@ export default function Home() {
     return <Loader message="Waking up the recommendation engine..." />;
   }
 
-  // 2. Play Trailer & Fetch Recs
+  // 2. Play Trailer & Fetch Recs & Description
   const handleMovieSelect = async (movie: any) => {
     setActiveMovie(movie);
     setTrailerId(null);
     setRecommendations(null);
+    setWatchMovieDetails(null);
+    setLoadingWatchDetails(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Fetch movie metadata/description for the watch view
+    try {
+      const detailsRes = await fetch(
+        `${API_BASE_URL}/details?title=${encodeURIComponent(movie.title)}`,
+      );
+      const detailsData = await detailsRes.json();
+      if (detailsData.data?.Response === "True") {
+        setWatchMovieDetails(detailsData.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch watch details", err);
+    } finally {
+      setLoadingWatchDetails(false);
+    }
 
     try {
       await fetch(`${API_BASE_URL}/user/watch`, {
@@ -288,7 +307,7 @@ export default function Home() {
               </div>
             </motion.div>
 
-            {/* DYNAMIC VIBE RESULTS (Appears right below search when active) */}
+            {/* DYNAMIC VIBE RESULTS */}
             {vibeResults && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -303,13 +322,16 @@ export default function Home() {
                     "{homeVibe}"
                   </h3>
                   <button
-                    onClick={() => [setVibeResults(null), setHomeVibe("")]}
+                    onClick={() => {
+                      setVibeResults(null);
+                      setHomeVibe("");
+                    }}
                     className="text-xs font-bold text-slate-400 hover:text-violet-600 uppercase tracking-wider bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     Clear Search
                   </button>
                 </div>
-                <div className="flex gap-5 overflow-x-auto pb-6 pt-4 snap-x no-scrollbar">
+                <div className="flex gap-5 overflow-x-auto pb-6 pt-4 snap-x ">
                   {vibeResults.map((movie, idx) => (
                     <div key={idx} className="flex-shrink-0 snap-start">
                       <MovieCard
@@ -323,7 +345,7 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* ALL HOME PAGE SECTIONS (Always visible now, below search/vibe results) */}
+            {/* ALL HOME PAGE SECTIONS */}
             <div className="space-y-12">
               {/* Personalized Rows */}
               {historyMovies.length > 0 && (
@@ -402,7 +424,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          /* BRIGHT WATCH VIEW */
+          /* BRIGHT WATCH VIEW WITH DESCRIPTION BELOW */
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -416,6 +438,7 @@ export default function Home() {
                 <ArrowLeft className="w-5 h-5" /> Back to Home
               </button>
 
+              {/* PLAYER */}
               <div className="w-full aspect-video bg-slate-900 rounded-[2rem] overflow-hidden relative flex items-center justify-center shadow-2xl ring-4 ring-slate-100">
                 {trailerId ? (
                   <iframe
@@ -427,9 +450,68 @@ export default function Home() {
                   <Loader2 className="w-10 h-10 animate-spin text-violet-500" />
                 )}
               </div>
+
               <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
                 {activeMovie.title}
               </h2>
+
+              {/* MOVIE DESCRIPTION & METADATA BELOW PLAYER */}
+              <div className="bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-200/60 space-y-6 shadow-sm">
+                {loadingWatchDetails ? (
+                  <div className="flex items-center gap-3 text-slate-400 py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
+                    <span className="font-medium">
+                      Loading movie overview...
+                    </span>
+                  </div>
+                ) : watchMovieDetails ? (
+                  <>
+                    <div className="flex flex-wrap gap-2 md:gap-3 items-center text-xs md:text-sm font-bold text-slate-600">
+                      <span className="bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-200 text-slate-700">
+                        {watchMovieDetails.Year}
+                      </span>
+                      <span className="bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-200 text-slate-700">
+                        {watchMovieDetails.Runtime}
+                      </span>
+                      <span className="bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-200 text-slate-700">
+                        {watchMovieDetails.Genre}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-4 py-1.5 rounded-full border border-amber-100 shadow-sm">
+                        <Star className="w-4 h-4 fill-current" />
+                        {watchMovieDetails.imdbRating}
+                      </span>
+                    </div>
+
+                    <p className="text-slate-700 text-base md:text-lg leading-relaxed font-medium">
+                      {watchMovieDetails.Plot}
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+                      <div>
+                        <strong className="block text-slate-900 mb-1 font-bold text-sm">
+                          Director
+                        </strong>
+                        <span className="text-slate-600 font-medium">
+                          {watchMovieDetails.Director}
+                        </span>
+                      </div>
+                      <div>
+                        <strong className="block text-slate-900 mb-1 font-bold text-sm">
+                          Top Cast
+                        </strong>
+                        <span className="text-slate-600 font-medium">
+                          {watchMovieDetails.Actors}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-slate-500 font-medium italic">
+                    Description details are currently unavailable for this
+                    title.
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* SIDEBAR RECS */}
@@ -577,7 +659,7 @@ function AnimatedSection({ title, children, gradient, titleColor }: any) {
       >
         {title}
       </h2>
-      <div className="flex gap-5 overflow-x-auto pb-4 pt-2 snap-x no-scrollbar relative z-10">
+      <div className="flex gap-5 overflow-x-auto pb-4 pt-2 snap-x  relative z-10">
         {children}
       </div>
     </motion.section>
