@@ -236,7 +236,7 @@ export default function Home() {
         >
           <Sparkles className="text-violet-600 w-7 h-7" />
           <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-500 bg-clip-text text-transparent">
-            VibeCast
+            Movie Magic
           </h1>
         </div>
       </header>
