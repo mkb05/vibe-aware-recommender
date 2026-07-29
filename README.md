@@ -53,18 +53,18 @@ The core recommendation engine of Movie Magic was built from scratch using PyTor
  │  Next.js Frontend    │                             │                                                        │
  │  (Next + Tailwind)   │ <────────────────────────── │  ┌──────────────────────────────────────────────────┐  │
  │                      │             JSON            │  │               PyTorch Two-Tower Model            │  │
- └──────────────────────┘                             │  │                                                  │  │
-                                                      │  │   [User ID] ──> [ User Tower Embeddings ]        │  │
-                                                      │  │                                 ↘                │  │
-                                                      │  │                                   [ Dot Product  │  │
-                                                      │  │                                   / Interaction] │  │
-                                                      │  │                                 ↗                │  │
-                                                      │  │   [Movie ID] ──> [Movie Tower Embeddings]        │  │
-                                                      │  │  └──────────────────────────────────────────────────┘  │
+ └──────────────────────┘                             │  │   [User ID] & [Movie ID] ──> Latent Embeddings   │  │
+                                                      │  └──────────────────────────────────────────────────┘  │
+                                                      │                                                        │
+                                                      │  ┌──────────────────────────────────────────────────┐  │
+                                                      │  │         Groq LLM Engine (LPU Hardware)           │  │
+                                                      │  │         (Model: llama-3.1-8b-instant)            │  │
+                                                      │  │         - Parses Vibe Search & Intent            │  │
+                                                      │  └──────────────────────────────────────────────────┘  │
                                                       └──────┬───────────────────────────────────┬─────────────┘
                                                              │                                   │
-                                      Trained Weights        │                                   │ Vector Search /
-                                      (User/Movie Embeds)    │                                   │ Similarity Query
+                                      Trained Embeddings     │                                   │ Vector Search /
+                                      & Weights Sync         │                                   │ Similarity Query
                                                              v                                   v
                                                       ┌────────────────────────────────────────────────────────┐
                                                       │                                                        │
