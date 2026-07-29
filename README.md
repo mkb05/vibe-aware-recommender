@@ -48,21 +48,29 @@ The core recommendation engine of Movie Magic was built from scratch using PyTor
 🏗️ System Architecture
 
 ```
-┌──────────────────────┐         HTTP / REST         ┌───────────────────────┐
- │                      │ ──────────────────────────> │                       │
- │  Next.js Frontend    │                             │  FastAPI (Python)     │
- │  (Next + Tailwind)  │ <────────────────────────── │  ML Inference API     │
- │                      │             JSON            │                       │
- └──────────────────────┘                             └──────┬─────────┬──────┘
-                                                             │         │
-                                      PyTorch Model Weights  │         │ Vector Retrieval
-                                      (User/Movie Embeds)    │         │ (History/Similarity)
-                                                             v         v
-                                                      ┌───────────────────────┐
-                                                      │                       │
-                                                      │ Qdrant Vector Engine  │
-                                                      │                       │
-                                                      └───────────────────────┘
+┌──────────────────────┐         HTTP / REST         ┌────────────────────────────────────────────────────────┐
+ │                      │ ──────────────────────────> │                      FastAPI Backend                   │
+ │  Next.js Frontend    │                             │                                                        │
+ │  (Next + Tailwind)   │ <────────────────────────── │  ┌──────────────────────────────────────────────────┐  │
+ │                      │             JSON            │  │               PyTorch Two-Tower Model            │  │
+ └──────────────────────┘                             │  │                                                  │  │
+                                                      │  │   [User ID] ──> [ User Tower Embeddings ]        │  │
+                                                      │  │                                 ↘                │  │
+                                                      │  │                                   [ Dot Product  │  │
+                                                      │  │                                   / Interaction] │  │
+                                                      │  │                                 ↗                │  │
+                                                      │  │   [Movie ID] ──> [Movie Tower Embeddings]        │  │
+                                                      │  │  └──────────────────────────────────────────────────┘  │
+                                                      └──────┬───────────────────────────────────┬─────────────┘
+                                                             │                                   │
+                                      Trained Weights        │                                   │ Vector Search /
+                                      (User/Movie Embeds)    │                                   │ Similarity Query
+                                                             v                                   v
+                                                      ┌────────────────────────────────────────────────────────┐
+                                                      │                                                        │
+                                                      │                 Qdrant Vector Engine                   │
+                                                      │                                                        │
+                                                      └────────────────────────────────────────────────────────┘
 ```
 
 ✨ Features
