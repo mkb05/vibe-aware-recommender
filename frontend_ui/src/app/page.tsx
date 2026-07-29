@@ -288,20 +288,28 @@ export default function Home() {
               </div>
             </motion.div>
 
-            {/* DYNAMIC VIBE RESULTS */}
+            {/* DYNAMIC VIBE RESULTS (Appears right below search when active) */}
             {vibeResults && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-4 bg-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-slate-100"
               >
-                <h3 className="text-2xl md:text-3xl font-black flex items-center gap-3 text-slate-800">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600">
-                    Custom Curated:
-                  </span>{" "}
-                  "{homeVibe}"
-                </h3>
-                <div className="flex gap-5 overflow-x-auto pb-6 pt-4 snap-x ">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl md:text-3xl font-black flex items-center gap-3 text-slate-800">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600">
+                      Custom Curated:
+                    </span>{" "}
+                    "{homeVibe}"
+                  </h3>
+                  <button
+                    onClick={() => [setVibeResults(null), setHomeVibe("")]}
+                    className="text-xs font-bold text-slate-400 hover:text-violet-600 uppercase tracking-wider bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Clear Search
+                  </button>
+                </div>
+                <div className="flex gap-5 overflow-x-auto pb-6 pt-4 snap-x no-scrollbar">
                   {vibeResults.map((movie, idx) => (
                     <div key={idx} className="flex-shrink-0 snap-start">
                       <MovieCard
@@ -315,85 +323,83 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* DEFAULT CATALOG & PERSONALIZED SECTIONS */}
-            {!vibeResults && (
-              <div className="space-y-12">
-                {/* Personalized Rows */}
-                {historyMovies.length > 0 && (
-                  <AnimatedSection
-                    title="Jump Back In"
-                    gradient="from-blue-50 to-indigo-100"
-                    titleColor="text-blue-600"
-                  >
-                    {historyMovies.map((movie: any, idx: number) => (
-                      <div key={idx} className="flex-shrink-0 snap-start">
-                        <MovieCard
-                          movie={movie}
-                          onSelect={handleMovieSelect}
-                          onInfo={openDetailsModal}
-                        />
-                      </div>
-                    ))}
-                  </AnimatedSection>
-                )}
+            {/* ALL HOME PAGE SECTIONS (Always visible now, below search/vibe results) */}
+            <div className="space-y-12">
+              {/* Personalized Rows */}
+              {historyMovies.length > 0 && (
+                <AnimatedSection
+                  title="Jump Back In"
+                  gradient="from-blue-50 to-indigo-100"
+                  titleColor="text-blue-600"
+                >
+                  {historyMovies.map((movie: any, idx: number) => (
+                    <div key={idx} className="flex-shrink-0 snap-start">
+                      <MovieCard
+                        movie={movie}
+                        onSelect={handleMovieSelect}
+                        onInfo={openDetailsModal}
+                      />
+                    </div>
+                  ))}
+                </AnimatedSection>
+              )}
 
-                {forYouMovies.length > 0 && (
-                  <AnimatedSection
-                    title="Top Picks For You"
-                    gradient="from-violet-50 to-fuchsia-100"
-                    titleColor="text-violet-600"
-                  >
-                    {forYouMovies.map((movie: any, idx: number) => (
-                      <div key={idx} className="flex-shrink-0 snap-start">
-                        <MovieCard
-                          movie={movie}
-                          onSelect={handleMovieSelect}
-                          onInfo={openDetailsModal}
-                        />
-                      </div>
-                    ))}
-                  </AnimatedSection>
-                )}
+              {forYouMovies.length > 0 && (
+                <AnimatedSection
+                  title="Top Picks For You"
+                  gradient="from-violet-50 to-fuchsia-100"
+                  titleColor="text-violet-600"
+                >
+                  {forYouMovies.map((movie: any, idx: number) => (
+                    <div key={idx} className="flex-shrink-0 snap-start">
+                      <MovieCard
+                        movie={movie}
+                        onSelect={handleMovieSelect}
+                        onInfo={openDetailsModal}
+                      />
+                    </div>
+                  ))}
+                </AnimatedSection>
+              )}
 
-                {peerMovies.length > 0 && (
-                  <AnimatedSection
-                    title="Trending in Your Circle"
-                    gradient="from-emerald-50 to-teal-100"
-                    titleColor="text-teal-600"
-                  >
-                    {peerMovies.map((movie: any, idx: number) => (
-                      <div key={idx} className="flex-shrink-0 snap-start">
-                        <MovieCard
-                          movie={movie}
-                          onSelect={handleMovieSelect}
-                          onInfo={openDetailsModal}
-                        />
-                      </div>
-                    ))}
-                  </AnimatedSection>
-                )}
+              {peerMovies.length > 0 && (
+                <AnimatedSection
+                  title="Trending in Your Circle"
+                  gradient="from-emerald-50 to-teal-100"
+                  titleColor="text-teal-600"
+                >
+                  {peerMovies.map((movie: any, idx: number) => (
+                    <div key={idx} className="flex-shrink-0 snap-start">
+                      <MovieCard
+                        movie={movie}
+                        onSelect={handleMovieSelect}
+                        onInfo={openDetailsModal}
+                      />
+                    </div>
+                  ))}
+                </AnimatedSection>
+              )}
 
-                {/* FALLBACK CATALOG (Animated Colorful Sections) */}
-                {categories.map((category, idx) => (
-                  <AnimatedSection
-                    key={idx}
-                    title={category.title}
-                    gradient={sectionGradients[idx % sectionGradients.length]}
-                    titleColor="text-slate-800"
-                  >
-                    {category.movies.map((movie: any) => (
-                      <div key={movie.id} className="flex-shrink-0 snap-start">
-                        <MovieCard
-                          movie={movie}
-                          onSelect={handleMovieSelect}
-                          onInfo={openDetailsModal}
-                        />
-                      </div>
-                    ))}
-                  </AnimatedSection>
-                ))}
-              </div>
-            )}
+              {/* FALLBACK CATALOG SECTIONS */}
+              {categories.map((category, idx) => (
+                <AnimatedSection
+                  key={idx}
+                  title={category.title}
+                  gradient={sectionGradients[idx % sectionGradients.length]}
+                  titleColor="text-slate-800"
+                >
+                  {category.movies.map((movie: any) => (
+                    <div key={movie.id} className="flex-shrink-0 snap-start">
+                      <MovieCard
+                        movie={movie}
+                        onSelect={handleMovieSelect}
+                        onInfo={openDetailsModal}
+                      />
+                    </div>
+                  ))}
+                </AnimatedSection>
+              ))}
+            </div>
           </div>
         ) : (
           /* BRIGHT WATCH VIEW */
@@ -464,7 +470,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* OMDb MOVIE DETAILS MODAL (Bright & Modern) */}
+      {/* OMDb MOVIE DETAILS MODAL */}
       {modalMovie && (
         <div
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4"
@@ -571,7 +577,7 @@ function AnimatedSection({ title, children, gradient, titleColor }: any) {
       >
         {title}
       </h2>
-      <div className="flex gap-5 overflow-x-auto pb-4 pt-2 snap-x  relative z-10">
+      <div className="flex gap-5 overflow-x-auto pb-4 pt-2 snap-x no-scrollbar relative z-10">
         {children}
       </div>
     </motion.section>
@@ -597,7 +603,6 @@ function MovieCard({ movie, onSelect, onInfo }: any) {
           loading="lazy"
         />
 
-        {/* Soft, dark gradient at the bottom so buttons stand out */}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
           <div className="w-full flex items-center justify-between gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
             <button className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white px-3 py-2.5 rounded-xl font-black flex items-center gap-1.5 text-xs sm:text-sm shadow-xl transition-transform active:scale-95 flex-grow justify-center">
