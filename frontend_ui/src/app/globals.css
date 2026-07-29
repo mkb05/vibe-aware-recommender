@@ -24,3 +24,40 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Light Theme Animated Scrollbar */
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8fafc; /* Very light slate */
+  border-radius: 8px;
+  margin: 0px 20px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* Soft gray */
+  border-radius: 8px;
+  border: 2px solid #f8fafc; /* Adds padding effect inside track */
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8b5cf6; /* Turns vibrant Violet on hover! */
+}

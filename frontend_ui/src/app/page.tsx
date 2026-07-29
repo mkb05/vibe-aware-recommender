@@ -10,19 +10,32 @@ import {
   Info,
   X,
   Star,
+  Play,
+  Sparkles,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { API_BASE_URL } from "../../config/api";
 import Loader from "./Loader";
 
+// Array of bright, colorful gradients for category sections
+const sectionGradients = [
+  "from-blue-50 via-indigo-50 to-purple-50",
+  "from-emerald-50 via-teal-50 to-cyan-50",
+  "from-orange-50 via-amber-50 to-yellow-50",
+  "from-pink-50 via-rose-50 to-red-50",
+  "from-violet-50 via-fuchsia-50 to-pink-50",
+];
+
 export default function Home() {
-  // Simulate a logged-in user (User ID 1 from MovieLens)
-  const currentUserId = 1;
+  // UNIQUE USER ID STATE
+  const [currentUserId, setCurrentUserId] = useState<number>(1);
+  const [isUserIdLoaded, setIsUserIdLoaded] = useState(false);
 
   // Discovery State (Default Catalog)
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
 
-  // NEW: Personalized Recommendations State
+  // Personalized Recommendations State
   const [historyMovies, setHistoryMovies] = useState<any[]>([]);
   const [forYouMovies, setForYouMovies] = useState<any[]>([]);
   const [peerMovies, setPeerMovies] = useState<any[]>([]);
@@ -43,15 +56,26 @@ export default function Home() {
   const [movieDetails, setMovieDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  // 0. Initialize User ID on First Load
+  useEffect(() => {
+    let storedId = localStorage.getItem("vibecast_user_id");
+    if (!storedId) {
+      storedId = Math.floor(Math.random() * 998999 + 1000).toString();
+      localStorage.setItem("vibecast_user_id", storedId);
+    }
+    setCurrentUserId(parseInt(storedId));
+    setIsUserIdLoaded(true);
+  }, []);
+
   // Load default catalog AND personalized recommendations on mount
   useEffect(() => {
-    // 1. Fetch Default Catalog
+    if (!isUserIdLoaded) return;
+
     fetch(`${API_BASE_URL}/catalog`)
       .then((res) => res.json())
       .then((data) => setCategories(data.categories || []))
       .finally(() => setLoadingCatalog(false));
 
-    // 2. Fetch Personalized Data for the logged-in user
     const fetchPersonalizedData = async () => {
       try {
         const [historyRes, forYouRes, peerRes] = await Promise.all([
@@ -66,7 +90,6 @@ export default function Home() {
         const forYouData = await forYouRes.json();
         const peerData = await peerRes.json();
 
-        // Depending on FastAPI, data might be direct array or wrapped in { data: [...] }
         setHistoryMovies(
           Array.isArray(historyData) ? historyData : historyData.data || [],
         );
@@ -82,7 +105,7 @@ export default function Home() {
     };
 
     fetchPersonalizedData();
-  }, [currentUserId]);
+  }, [currentUserId, isUserIdLoaded]);
 
   // 1. Homepage Vibe Search
   const handleHomeVibeSearch = async (e: FormEvent) => {
@@ -115,9 +138,8 @@ export default function Home() {
     setActiveMovie(movie);
     setTrailerId(null);
     setRecommendations(null);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // 1. Log this movie to the backend history store
     try {
       await fetch(`${API_BASE_URL}/user/watch`, {
         method: "POST",
@@ -125,7 +147,6 @@ export default function Home() {
         body: JSON.stringify({ user_id: currentUserId, movie_id: movie.id }),
       });
 
-      // 2. Refresh personalized home data immediately after logging
       const [historyRes, forYouRes] = await Promise.all([
         fetch(`${API_BASE_URL}/user/${currentUserId}/history`),
         fetch(`${API_BASE_URL}/recommendations/for-you/${currentUserId}`),
@@ -176,7 +197,7 @@ export default function Home() {
 
   // 3. Info Modal Fetch
   const openDetailsModal = async (movie: any, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the trailer click
+    e.stopPropagation();
     setModalMovie(movie);
     setLoadingDetails(true);
     setMovieDetails(null);
@@ -197,71 +218,92 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-gray-900 font-sans pb-20 relative">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-xs">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20 relative selection:bg-violet-500/30 overflow-x-hidden">
+      {/* Playful Background Blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-violet-400/20 rounded-full blur-3xl" />
+        <div className="absolute top-[20%] right-[-5%] w-[30rem] h-[30rem] bg-pink-400/20 rounded-full blur-3xl" />
+      </div>
+
+      <header className="bg-white/70 backdrop-blur-xl border-b border-white/50 sticky top-0 z-20 shadow-sm">
         <div
-          className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 cursor-pointer"
+          className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => {
             setActiveMovie(null);
             setVibeResults(null);
             setHomeVibe("");
           }}
         >
-          <PlayCircle className="text-emerald-500 w-8 h-8" />
-          <h1 className="text-xl font-bold tracking-tight">VibeCast</h1>
+          <Sparkles className="text-violet-600 w-7 h-7" />
+          <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-500 bg-clip-text text-transparent">
+            VibeCast
+          </h1>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+      <main className="max-w-7xl mx-auto px-4 py-6 md:py-8 relative z-10">
         {!activeMovie ? (
-          <div className="space-y-12">
-            {/* HERO VIBE SEARCH */}
-            <div className="bg-slate-900 rounded-2xl p-6 md:p-12 text-center shadow-xl">
-              <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
-                What's your vibe today?
-              </h2>
-              <p className="text-slate-400 mb-8 max-w-2xl mx-auto text-sm md:text-base">
-                Describe the exact mood, setting, or feeling you want, and our
-                AI curator will build a custom lineup just for you.
-              </p>
+          <div className="space-y-12 pb-12">
+            {/* VIBRANT VIBE SEARCH BAR */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+              className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-blue-600 via-violet-600 to-fuchsia-600 p-8 md:p-12 shadow-2xl shadow-violet-500/20 mt-4"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
 
-              <form
-                onSubmit={handleHomeVibeSearch}
-                className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-3"
-              >
-                <input
-                  type="text"
-                  placeholder="e.g., A rainy night mystery with a massive plot twist..."
-                  value={homeVibe}
-                  onChange={(e) => setHomeVibe(e.target.value)}
-                  className="flex-1 rounded-xl p-4 text-base md:text-lg focus:outline-none focus:ring-4 focus:ring-emerald-500/50 shadow-inner bg-white text-gray-900 placeholder-gray-400"
-                />
-                <button
-                  type="submit"
-                  disabled={isSearchingVibe || !homeVibe.trim()}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white py-3 sm:py-0 px-8 rounded-xl font-bold text-lg transition-all disabled:opacity-70 flex items-center justify-center min-w-[140px]"
+              <div className="relative z-10 max-w-3xl mx-auto text-center space-y-6">
+                <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white drop-shadow-sm">
+                  Find your perfect vibe.
+                </h2>
+                <p className="text-violet-100 text-sm md:text-lg max-w-xl mx-auto font-medium">
+                  Type a mood, color, aesthetic, or wild plot idea—our AI will
+                  curate the perfect movie magic for you.
+                </p>
+
+                <form
+                  onSubmit={handleHomeVibeSearch}
+                  className="flex flex-col sm:flex-row gap-3 pt-4"
                 >
-                  {isSearchingVibe ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    "Curate"
-                  )}
-                </button>
-              </form>
-            </div>
+                  <input
+                    type="text"
+                    placeholder="e.g., A rainy neon city with a cyberpunk mystery..."
+                    value={homeVibe}
+                    onChange={(e) => setHomeVibe(e.target.value)}
+                    className="flex-grow bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-6 py-4 text-base md:text-lg focus:outline-none focus:ring-4 focus:ring-white/30 text-white placeholder-white/60 shadow-inner transition-all font-medium"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSearchingVibe || !homeVibe.trim()}
+                    className="bg-white text-violet-600 hover:bg-slate-50 font-black px-8 py-4 rounded-2xl transition-all shadow-xl active:scale-95 flex items-center justify-center min-w-[160px] disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {isSearchingVibe ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-violet-600" />
+                    ) : (
+                      "Generate Magic"
+                    )}
+                  </button>
+                </form>
+              </div>
+            </motion.div>
 
             {/* DYNAMIC VIBE RESULTS */}
             {vibeResults && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h3 className="text-xl md:text-2xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
-                  Custom Curated for: "{homeVibe}"
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4 bg-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-slate-100"
+              >
+                <h3 className="text-2xl md:text-3xl font-black flex items-center gap-3 text-slate-800">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600">
+                    Custom Curated:
+                  </span>{" "}
+                  "{homeVibe}"
                 </h3>
-                <div className="flex gap-4 overflow-x-auto pb-4 snap-x no-scrollbar">
+                <div className="flex gap-5 overflow-x-auto pb-6 pt-4 snap-x ">
                   {vibeResults.map((movie, idx) => (
-                    <div
-                      key={idx}
-                      className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] flex-shrink-0 snap-start"
-                    >
+                    <div key={idx} className="flex-shrink-0 snap-start">
                       <MovieCard
                         movie={movie}
                         onSelect={handleMovieSelect}
@@ -270,119 +312,105 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* DEFAULT CATALOG & PERSONALIZED SECTIONS */}
             {!vibeResults && (
               <div className="space-y-12">
-                {/* Section 1: Based on your history */}
+                {/* Personalized Rows */}
                 {historyMovies.length > 0 && (
-                  <section>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
-                      History
-                    </h2>
-                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-                      {historyMovies.map((movie: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] snap-start"
-                        >
-                          <MovieCard
-                            movie={movie}
-                            onSelect={handleMovieSelect}
-                            onInfo={openDetailsModal}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
+                  <AnimatedSection
+                    title="Jump Back In"
+                    gradient="from-blue-50 to-indigo-100"
+                    titleColor="text-blue-600"
+                  >
+                    {historyMovies.map((movie: any, idx: number) => (
+                      <div key={idx} className="flex-shrink-0 snap-start">
+                        <MovieCard
+                          movie={movie}
+                          onSelect={handleMovieSelect}
+                          onInfo={openDetailsModal}
+                        />
+                      </div>
+                    ))}
+                  </AnimatedSection>
                 )}
 
-                {/* Section 2: Recommended for you */}
                 {forYouMovies.length > 0 && (
-                  <section>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-l-4 border-blue-500 pl-3">
-                      Recommended For You
-                    </h2>
-                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-                      {forYouMovies.map((movie: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] snap-start"
-                        >
-                          <MovieCard
-                            movie={movie}
-                            onSelect={handleMovieSelect}
-                            onInfo={openDetailsModal}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
+                  <AnimatedSection
+                    title="Top Picks For You"
+                    gradient="from-violet-50 to-fuchsia-100"
+                    titleColor="text-violet-600"
+                  >
+                    {forYouMovies.map((movie: any, idx: number) => (
+                      <div key={idx} className="flex-shrink-0 snap-start">
+                        <MovieCard
+                          movie={movie}
+                          onSelect={handleMovieSelect}
+                          onInfo={openDetailsModal}
+                        />
+                      </div>
+                    ))}
+                  </AnimatedSection>
                 )}
 
-                {/* Section 3: Users with similar interest */}
                 {peerMovies.length > 0 && (
-                  <section>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-l-4 border-purple-500 pl-3">
-                      Users with Similar Interests Are Watching
-                    </h2>
-                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-                      {peerMovies.map((movie: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] snap-start"
-                        >
-                          <MovieCard
-                            movie={movie}
-                            onSelect={handleMovieSelect}
-                            onInfo={openDetailsModal}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
+                  <AnimatedSection
+                    title="Trending in Your Circle"
+                    gradient="from-emerald-50 to-teal-100"
+                    titleColor="text-teal-600"
+                  >
+                    {peerMovies.map((movie: any, idx: number) => (
+                      <div key={idx} className="flex-shrink-0 snap-start">
+                        <MovieCard
+                          movie={movie}
+                          onSelect={handleMovieSelect}
+                          onInfo={openDetailsModal}
+                        />
+                      </div>
+                    ))}
+                  </AnimatedSection>
                 )}
 
-                {/* FALLBACK CATALOG (If no personalization exists yet) */}
+                {/* FALLBACK CATALOG (Animated Colorful Sections) */}
                 {categories.map((category, idx) => (
-                  <div key={idx} className="space-y-4">
-                    <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
-                      {category.title}
-                    </h3>
-                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x no-scrollbar">
-                      {category.movies.map((movie: any) => (
-                        <div
-                          key={movie.id}
-                          className="min-w-[160px] sm:min-w-[200px] md:min-w-[240px] flex-shrink-0 snap-start"
-                        >
-                          <MovieCard
-                            movie={movie}
-                            onSelect={handleMovieSelect}
-                            onInfo={openDetailsModal}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <AnimatedSection
+                    key={idx}
+                    title={category.title}
+                    gradient={sectionGradients[idx % sectionGradients.length]}
+                    titleColor="text-slate-800"
+                  >
+                    {category.movies.map((movie: any) => (
+                      <div key={movie.id} className="flex-shrink-0 snap-start">
+                        <MovieCard
+                          movie={movie}
+                          onSelect={handleMovieSelect}
+                          onInfo={openDetailsModal}
+                        />
+                      </div>
+                    ))}
+                  </AnimatedSection>
                 ))}
               </div>
             )}
           </div>
         ) : (
-          /* WATCH VIEW (Unchanged) */
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* ... Your existing watch view code ... */}
-            <div className="flex-1 space-y-4 md:space-y-6">
+          /* BRIGHT WATCH VIEW */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col lg:flex-row gap-8 bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl border border-slate-100"
+          >
+            <div className="flex-1 space-y-6">
               <button
                 onClick={() => setActiveMovie(null)}
-                className="flex items-center gap-2 text-gray-500 hover:text-emerald-600 font-semibold transition-colors"
+                className="flex items-center gap-2 text-slate-500 hover:text-violet-600 font-bold transition-colors bg-slate-100 hover:bg-violet-50 px-4 py-2 rounded-xl w-fit"
               >
                 <ArrowLeft className="w-5 h-5" /> Back to Home
               </button>
-              {/* PLAYER */}
-              <div className="w-full aspect-video bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center">
+
+              <div className="w-full aspect-video bg-slate-900 rounded-[2rem] overflow-hidden relative flex items-center justify-center shadow-2xl ring-4 ring-slate-100">
                 {trailerId ? (
                   <iframe
                     className="w-full h-full absolute inset-0"
@@ -390,179 +418,203 @@ export default function Home() {
                     allowFullScreen
                   />
                 ) : (
-                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                  <Loader2 className="w-10 h-10 animate-spin text-violet-500" />
                 )}
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold">
+              <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
                 {activeMovie.title}
               </h2>
             </div>
 
             {/* SIDEBAR RECS */}
             <div className="w-full lg:w-1/3 space-y-4">
-              <h3 className="text-xl font-bold mb-4">Up Next</h3>
-              {recommendations?.map((movie: any, idx: number) => (
-                <div
-                  key={idx}
-                  onClick={() =>
-                    handleMovieSelect({ title: movie.title, id: 9999 })
-                  }
-                  className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 hover:border-emerald-500 transition-all cursor-pointer flex gap-4"
-                >
-                  {movie.poster && (
-                    <img
-                      src={movie.poster}
-                      alt={movie.title}
-                      className="w-16 h-24 object-cover rounded-md shadow-sm shrink-0"
-                    />
-                  )}
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-sm mb-1">
-                      {movie.title}
-                    </h4>
-                    <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">
-                      {movie.reason}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              <h3 className="text-2xl font-black mb-6 text-slate-800 border-b-2 border-slate-100 pb-4">
+                Play Next
+              </h3>
+              <div className="space-y-4">
+                {recommendations?.map((movie: any, idx: number) => (
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    key={idx}
+                    onClick={() =>
+                      handleMovieSelect({ title: movie.title, id: 9999 })
+                    }
+                    className="bg-slate-50 rounded-2xl shadow-sm border border-slate-200 p-4 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-500/10 transition-all cursor-pointer flex gap-4 group"
+                  >
+                    {movie.poster && (
+                      <img
+                        src={movie.poster}
+                        alt={movie.title}
+                        className="w-20 h-28 object-cover rounded-xl shadow-md shrink-0 group-hover:scale-105 transition-transform"
+                      />
+                    )}
+                    <div className="flex flex-col justify-center">
+                      <h4 className="font-bold text-slate-800 text-base mb-1 group-hover:text-violet-600 transition-colors line-clamp-2">
+                        {movie.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed line-clamp-3">
+                        {movie.reason}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
+          </motion.div>
         )}
       </main>
 
-      {/* OMDb MOVIE DETAILS MODAL (Unchanged) */}
+      {/* OMDb MOVIE DETAILS MODAL (Bright & Modern) */}
       {modalMovie && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4"
           onClick={() => setModalMovie(null)}
         >
-          {/* ... Modal code remains identical ... */}
-          <div
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative h-48 md:h-64 bg-slate-900 shrink-0">
+            <div className="relative h-56 md:h-72 bg-slate-900 shrink-0">
               {modalMovie.poster && (
                 <img
                   src={modalMovie.poster}
-                  className="w-full h-full object-cover opacity-50"
+                  className="w-full h-full object-cover opacity-60"
                   alt="Backdrop"
                 />
               )}
               <button
                 onClick={() => setModalMovie(null)}
-                className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black transition-colors"
+                className="absolute top-4 right-4 bg-white/20 backdrop-blur-md text-white p-2.5 rounded-full hover:bg-violet-500 transition-colors shadow-lg"
               >
                 <X className="w-5 h-5" />
               </button>
-              <div className="absolute bottom-0 left-0 p-4 md:p-6 bg-gradient-to-t from-black/90 to-transparent w-full">
-                <h2 className="text-2xl md:text-3xl font-bold text-white drop-shadow-md">
+              <div className="absolute bottom-0 left-0 p-6 md:p-8 bg-gradient-to-t from-white via-white/80 to-transparent w-full">
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 drop-shadow-sm mt-10">
                   {modalMovie.title}
                 </h2>
               </div>
             </div>
 
-            <div className="p-4 md:p-8 min-h-[250px]">
+            <div className="p-6 md:p-8 min-h-[250px] bg-white">
               {loadingDetails ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3 py-10">
-                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />{" "}
-                  Fetching studio data...
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3 py-10">
+                  <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                  <span className="font-medium">Fetching studio magic...</span>
                 </div>
               ) : movieDetails ? (
                 <div className="space-y-6">
-                  <div className="flex flex-wrap gap-2 md:gap-3 items-center text-xs md:text-sm font-medium text-slate-600 border-b pb-4">
-                    <span className="bg-slate-100 px-3 py-1 rounded-full">
+                  <div className="flex flex-wrap gap-2 md:gap-3 items-center text-xs md:text-sm font-bold text-slate-600 border-b border-slate-100 pb-5">
+                    <span className="bg-slate-100 px-4 py-1.5 rounded-full text-slate-700">
                       {movieDetails.Year}
                     </span>
-                    <span className="bg-slate-100 px-3 py-1 rounded-full">
+                    <span className="bg-slate-100 px-4 py-1.5 rounded-full text-slate-700">
                       {movieDetails.Runtime}
                     </span>
-                    <span className="bg-slate-100 px-3 py-1 rounded-full">
+                    <span className="bg-slate-100 px-4 py-1.5 rounded-full text-slate-700">
                       {movieDetails.Genre}
                     </span>
-                    <span className="flex items-center gap-1 text-amber-500 bg-amber-50 px-3 py-1 rounded-full">
-                      <Star className="w-4 h-4 fill-current" />{" "}
+                    <span className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-4 py-1.5 rounded-full border border-amber-100">
+                      <Star className="w-4 h-4 fill-current" />
                       {movieDetails.imdbRating}
                     </span>
                   </div>
-                  <p className="text-gray-700 text-sm md:text-lg leading-relaxed">
+                  <p className="text-slate-600 text-sm md:text-lg leading-relaxed font-medium">
                     {movieDetails.Plot}
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     <div>
-                      <strong className="block text-gray-900 mb-1">
+                      <strong className="block text-slate-900 mb-1 font-bold text-base">
                         Director
                       </strong>
-                      <span className="text-gray-600">
+                      <span className="text-slate-600 font-medium">
                         {movieDetails.Director}
                       </span>
                     </div>
                     <div>
-                      <strong className="block text-gray-900 mb-1">
+                      <strong className="block text-slate-900 mb-1 font-bold text-base">
                         Top Cast
                       </strong>
-                      <span className="text-gray-600">
+                      <span className="text-slate-600 font-medium">
                         {movieDetails.Actors}
                       </span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center mt-10">
+                <p className="text-slate-400 text-center mt-10 font-medium">
                   Metadata could not be found for this title.
                 </p>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
     </div>
   );
 }
 
-// Reusable Movie Card Component (Unchanged)
-function MovieCard({
-  movie,
-  onSelect,
-  onInfo,
-}: {
-  movie: any;
-  onSelect: any;
-  onInfo: any;
-}) {
+// ANIMATED SECTION WRAPPER
+function AnimatedSection({ title, children, gradient, titleColor }: any) {
   return (
-    <div
-      onClick={() => onSelect(movie)}
-      className="group relative h-56 sm:h-72 bg-slate-900 rounded-xl overflow-hidden cursor-pointer hover:ring-4 hover:ring-emerald-500 transition-all shadow-md flex items-end p-3 sm:p-4"
+    <motion.section
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className={`p-6 md:p-8 rounded-[2rem] bg-gradient-to-br ${gradient} shadow-lg border border-white/50 relative overflow-hidden`}
     >
-      {movie.poster && (
+      <div className="absolute top-0 right-0 w-64 h-64 bg-white/40 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3 pointer-events-none" />
+      <h2
+        className={`text-2xl md:text-3xl font-black mb-6 flex items-center gap-3 relative z-10 ${titleColor}`}
+      >
+        {title}
+      </h2>
+      <div className="flex gap-5 overflow-x-auto pb-4 pt-2 snap-x  relative z-10">
+        {children}
+      </div>
+    </motion.section>
+  );
+}
+
+// BRIGHT & COLORFUL MOVIE CARD
+function MovieCard({ movie, onSelect, onInfo }: any) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.05, y: -8 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="group relative w-[180px] sm:w-[210px] md:w-[240px] h-[270px] sm:h-[315px] md:h-[360px] bg-white rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 border-[3px] border-white hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-500/30 cursor-pointer flex-shrink-0"
+    >
+      <div
+        onClick={() => onSelect(movie)}
+        className="relative w-full h-full overflow-hidden bg-slate-100"
+      >
         <img
           src={movie.poster}
           alt={movie.title}
-          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          loading="lazy"
         />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent sm:group-hover:from-black/90 transition-colors" />
 
-      <div className="relative z-10 w-full">
-        <h4 className="text-white font-bold text-sm sm:text-lg leading-tight mb-2 sm:mb-3 drop-shadow-md line-clamp-2">
-          {movie.title}
-        </h4>
-
-        <div className="flex gap-2 opacity-100 translate-y-0 sm:opacity-0 sm:translate-y-4 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 transition-all duration-300">
-          <button className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold py-1.5 sm:py-2 rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 shadow-lg">
-            <PlayCircle className="w-4 h-4" />{" "}
-            <span className="hidden sm:inline">Play</span>
-          </button>
-          <button
-            onClick={(e) => onInfo(movie, e)}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-xs font-bold px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg flex items-center justify-center shadow-lg"
-          >
-            <Info className="w-4 h-4" />
-          </button>
+        {/* Soft, dark gradient at the bottom so buttons stand out */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+          <div className="w-full flex items-center justify-between gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+            <button className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white px-3 py-2.5 rounded-xl font-black flex items-center gap-1.5 text-xs sm:text-sm shadow-xl transition-transform active:scale-95 flex-grow justify-center">
+              <Play className="w-4 h-4 fill-current" /> Watch
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo(movie, e);
+              }}
+              className="bg-white/20 hover:bg-white/40 text-white p-2.5 rounded-xl backdrop-blur-md transition-colors border border-white/30 shadow-xl"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
